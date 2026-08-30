@@ -149,8 +149,11 @@ if [ ! -f "${CONFIG_DIR}/lom.env" ]; then
 # Letters of Marque server — read by the lom-server command.
 # Signs sessions and tickets. Generated at install; keep it, keep it secret.
 AUTH_SECRET=${SECRET}
-# Where the server listens. Put a TLS-terminating proxy in front for wss://.
+# Where the server listens. Plain http on this port; for https, set the
+# two TLS lines and bind :443 — the server speaks TLS itself, no proxy.
 BIND=0.0.0.0:1717
+# TLS_CERT=/etc/letsencrypt/live/lom-api.devforge.io/fullchain.pem
+# TLS_KEY=/etc/letsencrypt/live/lom-api.devforge.io/privkey.pem
 # 1 in production. 0 accepts anonymous sockets, which is only for local dev.
 REQUIRE_TICKET=1
 # Log level and shape. LOG_FORMAT=json for a collector.

@@ -44,9 +44,38 @@ INSTALL_DIR=$HOME/lom BIN_DIR=$HOME/bin CONFIG_DIR=$HOME/lom/etc WORLD_DIR=$HOME
 lom-server
 ```
 
-Listens on `0.0.0.0:1717`. Put a TLS-terminating reverse proxy in front for
-`https://` and `wss://` — the server speaks plain HTTP and WebSocket — and
-point the client at that origin at build time (`VITE_SERVER_URL`).
+Listens on `0.0.0.0:1717`, plain http. That is right on a laptop and wrong
+on a server: the client is served over https, and a browser will not let an
+https page call `http://` or open `ws://`.
+
+### HTTPS
+
+The server speaks TLS itself — no proxy — when `lom.env` names a certificate
+and key. With Let's Encrypt, on a host whose DNS name points at it:
+
+```bash
+sudo apt install certbot
+sudo certbot certonly --standalone -d lom-api.devforge.io    # port 80 must be free and open
+```
+
+Then in `/etc/lom/lom.env`:
+
+```bash
+BIND=0.0.0.0:443
+TLS_CERT=/etc/letsencrypt/live/lom-api.devforge.io/fullchain.pem
+TLS_KEY=/etc/letsencrypt/live/lom-api.devforge.io/privkey.pem
+```
+
+and let the `lom` user read them (`sudo chgrp -R lom /etc/letsencrypt/live
+/etc/letsencrypt/archive && sudo chmod -R g+rX /etc/letsencrypt/live
+/etc/letsencrypt/archive`). The server re-reads the files once a day, so
+certbot's automatic renewal needs no restart. Port 443 is privileged: the
+unit below grants it with `AmbientCapabilities`; running by hand, use a high
+port or `sudo`.
+
+`https://lom-api.devforge.io/health` should then answer `ok`, and the client
+is built with `VITE_SERVER_URL=https://lom-api.devforge.io` (the socket
+derives to `wss://…/ws`).
 
 ### As a service (systemd)
 
@@ -75,6 +104,8 @@ Run it under its own user, started at boot and restarted if it dies.
    ExecStart=/usr/local/bin/lom-server
    Restart=on-failure
    RestartSec=5
+   # Lets an unprivileged user bind :443 for HTTPS.
+   AmbientCapabilities=CAP_NET_BIND_SERVICE
    # Give a region time to checkpoint on the way down.
    TimeoutStopSec=30
    # The world is the only thing it writes.
