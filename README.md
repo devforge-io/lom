@@ -51,19 +51,18 @@ https page call `http://` or open `ws://`.
 ### HTTPS
 
 The server speaks TLS itself — no proxy — when `lom.env` names a certificate
-and key. With Let's Encrypt, on a host whose DNS name points at it:
+and key. It runs on the same host as Anvil, under that host's name and
+**its existing certificate**: `anvil.devforge.io` already has one under
+`/etc/letsencrypt/live/anvil.devforge.io/`, so there is nothing to issue.
+(A host without one: `sudo certbot certonly --standalone -d <name>`, with
+port 80 free and open.)
 
-```bash
-sudo apt install certbot
-sudo certbot certonly --standalone -d lom-api.devforge.io    # port 80 must be free and open
-```
-
-Then in `/etc/lom/lom.env`:
+In `/etc/lom/lom.env`:
 
 ```bash
 BIND=0.0.0.0:443
-TLS_CERT=/etc/letsencrypt/live/lom-api.devforge.io/fullchain.pem
-TLS_KEY=/etc/letsencrypt/live/lom-api.devforge.io/privkey.pem
+TLS_CERT=/etc/letsencrypt/live/anvil.devforge.io/fullchain.pem
+TLS_KEY=/etc/letsencrypt/live/anvil.devforge.io/privkey.pem
 ```
 
 and let the `lom` user read them (`sudo chgrp -R lom /etc/letsencrypt/live
@@ -73,8 +72,8 @@ certbot's automatic renewal needs no restart. Port 443 is privileged: the
 unit below grants it with `AmbientCapabilities`; running by hand, use a high
 port or `sudo`.
 
-`https://lom-api.devforge.io/health` should then answer `ok`, and the client
-is built with `VITE_SERVER_URL=https://lom-api.devforge.io` (the socket
+`https://anvil.devforge.io/health` should then answer `ok`, and the client
+is built with `VITE_SERVER_URL=https://anvil.devforge.io` (the socket
 derives to `wss://…/ws`).
 
 ### As a service (systemd)
