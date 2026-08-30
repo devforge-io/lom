@@ -52,10 +52,12 @@ https page call `http://` or open `ws://`.
 
 The server speaks TLS itself — no proxy — when `lom.env` names a certificate
 and key. It runs on the same host as Anvil, under that host's name and
-**its existing certificate**: `anvil.devforge.io` already has one under
-`/etc/letsencrypt/live/anvil.devforge.io/`, so there is nothing to issue.
-(A host without one: `sudo certbot certonly --standalone -d <name>`, with
-port 80 free and open.)
+**its existing certificate**: Anvil already serves `anvil.devforge.io` on
+`:7474` with one, and `:443` is free, so there is nothing to issue — point
+at the same files. Find them with `sudo ls /etc/letsencrypt/live/` (the
+usual place; otherwise wherever Anvil's config names them).
+(A host without a certificate: `sudo certbot certonly --standalone -d
+<name>`, with port 80 free and open.)
 
 In `/etc/lom/lom.env`:
 
@@ -130,7 +132,7 @@ Then:
 ```bash
 systemctl status lom-server          # is it up
 journalctl -u lom-server -f          # its log, live
-curl -fsS http://127.0.0.1:1717/health
+curl -fsS https://anvil.devforge.io/health   # or http://127.0.0.1:1717/health without TLS
 sudo systemctl restart lom-server    # after an upgrade or a change to lom.env
 sudo systemctl disable --now lom-server   # stop it and take it off startup
 ```
