@@ -48,30 +48,73 @@ Listens on `0.0.0.0:1717`. Put a TLS-terminating reverse proxy in front for
 `https://` and `wss://` — the server speaks plain HTTP and WebSocket — and
 point the client at that origin at build time (`VITE_SERVER_URL`).
 
-As a service, a unit like this does:
+### As a service (systemd)
 
-```ini
-# /etc/systemd/system/lom-server.service
-[Unit]
-Description=Letters of Marque server
-After=network-online.target
+Run it under its own user, started at boot and restarted if it dies.
 
-[Service]
-ExecStart=/usr/local/bin/lom-server
-Restart=on-failure
-User=lom
-# The world and the settings must be readable by this user.
+1. A user to run as, owning the world and able to read the settings:
 
-[Install]
-WantedBy=multi-user.target
+   ```bash
+   sudo useradd --system --home /var/lib/lom --shell /usr/sbin/nologin lom
+   sudo chown -R lom:lom /var/lib/lom
+   sudo chgrp lom /etc/lom/lom.env && sudo chmod 640 /etc/lom/lom.env
+   ```
+
+2. The unit:
+
+   ```bash
+   sudo tee /etc/systemd/system/lom-server.service >/dev/null <<'EOF'
+   [Unit]
+   Description=Letters of Marque server
+   After=network-online.target
+   Wants=network-online.target
+
+   [Service]
+   User=lom
+   Group=lom
+   ExecStart=/usr/local/bin/lom-server
+   Restart=on-failure
+   RestartSec=5
+   # Give a region time to checkpoint on the way down.
+   TimeoutStopSec=30
+   # The world is the only thing it writes.
+   ReadWritePaths=/var/lib/lom
+   ProtectSystem=strict
+   ProtectHome=true
+   NoNewPrivileges=true
+
+   [Install]
+   WantedBy=multi-user.target
+   EOF
+   ```
+
+3. Load it, start it, and have it start at boot:
+
+   ```bash
+   sudo systemctl daemon-reload
+   sudo systemctl enable --now lom-server
+   ```
+
+Then:
+
+```bash
+systemctl status lom-server          # is it up
+journalctl -u lom-server -f          # its log, live
+curl -fsS http://127.0.0.1:1717/health
+sudo systemctl restart lom-server    # after an upgrade or a change to lom.env
+sudo systemctl disable --now lom-server   # stop it and take it off startup
 ```
+
+`RUST_LOG`, `BIND` and the rest still come from `/etc/lom/lom.env` — the
+`lom-server` command loads it, so the unit needs no `Environment=` lines.
 
 ## Upgrade
 
 Run the installer again. The new version lands beside the old under
 `/opt/lom/`, `current` moves to it, and `lom.env` and the world are left
 exactly as they were. Roll back by pointing `current` at the previous
-directory.
+directory. Either way, `sudo systemctl restart lom-server` picks it up —
+the running process keeps the old binary until then.
 
 ## Uninstall
 
