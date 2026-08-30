@@ -53,8 +53,8 @@ https page call `http://` or open `ws://`.
 The server speaks TLS itself — no proxy — when `lom.env` names a certificate
 and key. It runs on the same host as Anvil, under that host's name and
 **its existing certificate**: Anvil already serves `anvil.devforge.io` on
-`:7474` with one, and `:443` is free, so there is nothing to issue — point
-at the same files. Find them with `sudo ls /etc/letsencrypt/live/` (the
+`:7474` with one, so there is nothing to issue — point at the same files.
+The game keeps its own port, `:1717`, and simply speaks TLS on it. Find them with `sudo ls /etc/letsencrypt/live/` (the
 usual place; otherwise wherever Anvil's config names them).
 (A host without a certificate: `sudo certbot certonly --standalone -d
 <name>`, with port 80 free and open.)
@@ -62,7 +62,7 @@ usual place; otherwise wherever Anvil's config names them).
 In `/etc/lom/lom.env`:
 
 ```bash
-BIND=0.0.0.0:443
+BIND=0.0.0.0:1717
 TLS_CERT=/etc/letsencrypt/live/anvil.devforge.io/fullchain.pem
 TLS_KEY=/etc/letsencrypt/live/anvil.devforge.io/privkey.pem
 ```
@@ -70,13 +70,11 @@ TLS_KEY=/etc/letsencrypt/live/anvil.devforge.io/privkey.pem
 and let the `lom` user read them (`sudo chgrp -R lom /etc/letsencrypt/live
 /etc/letsencrypt/archive && sudo chmod -R g+rX /etc/letsencrypt/live
 /etc/letsencrypt/archive`). The server re-reads the files once a day, so
-certbot's automatic renewal needs no restart. Port 443 is privileged: the
-unit below grants it with `AmbientCapabilities`; running by hand, use a high
-port or `sudo`.
+certbot's automatic renewal needs no restart.
 
-`https://anvil.devforge.io/health` should then answer `ok`, and the client
-is built with `VITE_SERVER_URL=https://anvil.devforge.io` (the socket
-derives to `wss://…/ws`).
+`https://anvil.devforge.io:1717/health` should then answer `ok`, and the
+client is built with `VITE_SERVER_URL=https://anvil.devforge.io:1717` (the
+socket derives to `wss://anvil.devforge.io:1717/ws`).
 
 ### As a service (systemd)
 
@@ -105,8 +103,6 @@ Run it under its own user, started at boot and restarted if it dies.
    ExecStart=/usr/local/bin/lom-server
    Restart=on-failure
    RestartSec=5
-   # Lets an unprivileged user bind :443 for HTTPS.
-   AmbientCapabilities=CAP_NET_BIND_SERVICE
    # Give a region time to checkpoint on the way down.
    TimeoutStopSec=30
    # The world is the only thing it writes.
@@ -132,7 +128,7 @@ Then:
 ```bash
 systemctl status lom-server          # is it up
 journalctl -u lom-server -f          # its log, live
-curl -fsS https://anvil.devforge.io/health   # or http://127.0.0.1:1717/health without TLS
+curl -fsS https://anvil.devforge.io:1717/health   # or http://127.0.0.1:1717/health without TLS
 sudo systemctl restart lom-server    # after an upgrade or a change to lom.env
 sudo systemctl disable --now lom-server   # stop it and take it off startup
 ```

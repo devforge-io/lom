@@ -149,8 +149,8 @@ if [ ! -f "${CONFIG_DIR}/lom.env" ]; then
 # Letters of Marque server — read by the lom-server command.
 # Signs sessions and tickets. Generated at install; keep it, keep it secret.
 AUTH_SECRET=${SECRET}
-# Where the server listens. Plain http on this port; for https, set the
-# two TLS lines and bind :443 — the server speaks TLS itself, no proxy.
+# Where the server listens. Plain http; uncomment the two TLS lines and it
+# speaks https and wss on this same port itself — no proxy, no other port.
 BIND=0.0.0.0:1717
 # TLS_CERT=/etc/letsencrypt/live/anvil.devforge.io/fullchain.pem
 # TLS_KEY=/etc/letsencrypt/live/anvil.devforge.io/privkey.pem
